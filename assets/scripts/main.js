@@ -32,7 +32,7 @@ async function init() {
  * Detects if there's a service worker, then loads it and begins the process
  * of installing it and getting it running
  */
-function initializeServiceWorker() {
+ async function initializeServiceWorker() {
   // EXPLORE - START (All explore numbers start with B)
   /*******************/
   // ServiceWorkers have many uses, the most common of which is to manage
@@ -42,6 +42,26 @@ function initializeServiceWorker() {
   // websites to have some (if not all) functionality offline! I highly
   // recommend reading up on ServiceWorkers on MDN before continuing.
   /*******************/
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", async() => {
+      try {
+        const registration = await navigator.serviceWorker.register("/sw.js", {
+          scope: "./",
+        });
+        if (registration.installing) {
+          console.log("Service worker installing");
+        } else if (registration.waiting) {
+          console.log("Service worker installed");
+        } else if (registration.active) {
+          console.log("Service worker active");
+        }
+      } catch (error) {
+        console.error(`Registration failed with ${error}`);
+      }
+    })
+  }
+
   // We first must register our ServiceWorker here before any of the code in
   // sw.js is executed.
   // B1. TODO - Check if 'serviceWorker' is supported in the current browser
@@ -68,6 +88,10 @@ async function getRecipes() {
   // EXPOSE - START (All expose numbers start with A)
   // A1. TODO - Check local storage to see if there are any recipes.
   //            If there are recipes, return them.
+  if(localStorage.getItem('recipes') != null){
+    return JSON.parse(localStorage.getItem('recipes'));
+  }
+  
   /**************************/
   // The rest of this method will be concerned with requesting the recipes
   // from the network
@@ -78,6 +102,7 @@ async function getRecipes() {
   //            take two parameters - resolve, and reject. These are functions
   //            you can call to either resolve the Promise or Reject it.
   /**************************/
+
   // A4-A11 will all be *inside* the callback function we passed to the Promise
   // we're returning
   /**************************/
@@ -100,6 +125,29 @@ async function getRecipes() {
   //            resolve() method.
   // A10. TODO - Log any errors from catch using console.error
   // A11. TODO - Pass any errors to the Promise's reject() function
+
+  var recipes = [];
+  var response;
+  var recipe;
+  return new Promise(async(resolve, reject) => {
+    for (let i = 0; i < RECIPE_URLS.length; i ++){
+      const url = RECIPE_URLS[i];
+      try{
+        fetch(url).then((response) => {
+          return response.json();
+        }).then((response) => {
+          recipes.push(response);
+          if(recipes.length == RECIPE_URLS.length){
+            saveRecipesToStorage(recipes);
+            resolve(recipes);
+          }
+        });
+      }catch(err){
+        console.error(err);
+        reject(err);
+      }
+    }
+  }); 
 }
 
 /**
